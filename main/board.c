@@ -40,8 +40,8 @@
 uint16_t remote_addr;
 
 extern void example_ble_mesh_send_gen_onoff_set(void);
-extern void example_ble_mesh_send_gen_level_set(void);
 extern void example_ble_mesh_send_lighting_level_set(void);
+
 struct _led_state led_state[3] = {
     { LED_OFF, LED_OFF, LED_R, "red"   },
     { LED_OFF, LED_OFF, LED_G, "green" },
@@ -87,10 +87,7 @@ static void button2_tap_cb(void* arg)
 {
     ESP_LOGI(TAG, "btn2 cb (%s)", (char *)arg);
 
-//    example_ble_mesh_send_gen_level_set();
     example_ble_mesh_send_lighting_level_set();
-
-//    bt_mesh_node_reset();
 }
 
 static void board_button_init(void)
@@ -104,45 +101,6 @@ static void board_button_init(void)
         iot_button_set_evt_cb(btn2_handle, BUTTON_CB_RELEASE, button2_tap_cb, "RELEASE");
     }
 }
-/*
-static void board_uart_task(void *p)
-{
-    uint8_t *data = calloc(1, UART_BUF_SIZE);
-    uint32_t input;
-
-    while (1) {
-        int len = uart_read_bytes(MESH_UART_NUM, data, UART_BUF_SIZE, 100 / portTICK_PERIOD_MS);
-        if (len > 0) {
-            input = strtoul((const char *)data, NULL, 16);
-            if (len) {
-            data[len] = '\0';
-            ESP_LOGI(TAG, "Recv str: %s", (char *) data);
-            ESP_LOGI(TAG, "Recv value: %lu", input);
-        }
-//           remote_addr = input & 0xFFFF;
-//            ESP_LOGI(TAG, "%s: input 0x%08x, remote_addr 0x%04x", __func__, input, remote_addr);
-//            memset(data, 0, UART_BUF_SIZE);
-        }
-    }
-
-    vTaskDelete(NULL);
-}
-
-static void board_uart_init(void)
-{
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    uart_param_config(MESH_UART_NUM, &uart_config);
-    uart_set_pin(MESH_UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    uart_driver_install(MESH_UART_NUM, UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-}
-*/
 
 void board_init(void)
 {

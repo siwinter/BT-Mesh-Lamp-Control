@@ -36,14 +36,12 @@ static struct example_info_store {
     uint16_t app_idx;   /* AppKey Index */
     uint8_t  onoff;     /* Remote OnOff */
     uint16_t  level;    // s.w. /* Remote Level */
-    uint16_t  lightness;//s.w.
     uint8_t  tid;       /* Message TID */ //s.w. ggf braucht man für jedes Model je einen tid
 } __attribute__((packed)) store = {
     .net_idx = ESP_BLE_MESH_KEY_UNUSED,
     .app_idx = ESP_BLE_MESH_KEY_UNUSED,
     .onoff = LED_OFF,
-    .level = 1,           //s.w. unklar, wahrscheinlich ini Wert.??
-    .lightness = 1,
+    .level = 1,           //s.w.
     .tid = 0x0,
 };
 
@@ -183,7 +181,7 @@ static void example_ble_mesh_provisioning_cb(esp_ble_mesh_prov_cb_event_t event,
     }
 }
 
-void example_ble_mesh_send_gen_onoff_set(void)
+void send_gen_onoff_set(uint16_t adr, uint8_t state)
 {
     esp_ble_mesh_generic_client_set_state_t set = {0};
     esp_ble_mesh_client_common_param_t common = {0};
@@ -194,15 +192,15 @@ void example_ble_mesh_send_gen_onoff_set(void)
     common.model = onoff_client.model;
     common.ctx.net_idx = store.net_idx;
     common.ctx.app_idx = store.app_idx;
-//    common.ctx.addr = 0xFFFF;   /* to all nodes */
-    common.ctx.addr = 0x0003;   /* s.w. to my lamp */
+
+    common.ctx.addr = adr;   /* s.w. to my lamp */
     common.ctx.send_ttl = 3;
     common.ctx.send_rel = false;
     common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
     common.msg_role = ROLE_NODE;
 
     set.onoff_set.op_en = false;
-    set.onoff_set.onoff = store.onoff;
+    set.onoff_set.onoff = state;
     set.onoff_set.tid = store.tid++;
 
     err = esp_ble_mesh_generic_client_set_state(&common, &set);
@@ -210,45 +208,15 @@ void example_ble_mesh_send_gen_onoff_set(void)
         ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
         return;
     }
+}
 
+void example_ble_mesh_send_gen_onoff_set(void) {
+    send_gen_onoff_set(0xFFFF, store.onoff);
     store.onoff = !store.onoff;
     mesh_example_info_store(); /* Store proper mesh example info */
 }
 
-void example_ble_mesh_send_gen_level_set(void)
-{
-    esp_ble_mesh_generic_client_set_state_t set = {0};
-    esp_ble_mesh_client_common_param_t common = {0};
-    esp_err_t err = ESP_OK;
-
-    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
-    common.model = level_client.model;
-    common.ctx.net_idx = store.net_idx;
-    common.ctx.app_idx = store.app_idx;
-//    common.ctx.addr = 0xFFFF;   /* to all nodes */
-    common.ctx.addr = 0x0003;   /* s.w. to my lamp */
-    common.ctx.send_ttl = 3;
-    common.ctx.send_rel = false;
-    common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
-    common.msg_role = ROLE_NODE;
-
-    set.level_set.op_en = false;
-    set.level_set.level = store.level;
-    set.level_set.tid = store.tid++;
-
-    err = esp_ble_mesh_generic_client_set_state(&common, &set);
-    if (err) {
-        ESP_LOGE(TAG, "Send Generic Level Set Unack failed");
-        return;
-    }
-
-    store.level = store.level * 2;
-    if( store.level >= 32768) store.level = 1;
-    ESP_LOGI(TAG, "store.level ist %i", store.level);
-    mesh_example_info_store(); /* Store proper mesh example info */
-}
-
-void example_ble_mesh_send_lighting_level_set(void)
+void send_lighting_level_set(uint16_t adr, uint16_t level)
 {
     esp_ble_mesh_light_client_set_state_t set = {0};
     esp_ble_mesh_client_common_param_t common = {0};
@@ -258,15 +226,14 @@ void example_ble_mesh_send_lighting_level_set(void)
     common.model = light_client.model;
     common.ctx.net_idx = store.net_idx;
     common.ctx.app_idx = store.app_idx;
-//    common.ctx.addr = 0xFFFF;   /* to all nodes */
-    common.ctx.addr = 0x0003;   /* s.w. to my lamp */
+    common.ctx.addr = adr;
     common.ctx.send_ttl = 3;
     common.ctx.send_rel = false;
     common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
     common.msg_role = ROLE_NODE;
 
     set.lightness_set.op_en = false;
-    set.lightness_set.lightness = store.lightness;
+    set.lightness_set.lightness = level;
     set.lightness_set.tid = store.tid++;
 
     err = esp_ble_mesh_light_client_set_state(&common, &set);
@@ -274,13 +241,15 @@ void example_ble_mesh_send_lighting_level_set(void)
         ESP_LOGE(TAG, "Send Light Lighting Set failed");
         return;
     }
-
-    store.lightness = store.lightness + 1;
-    if( store.lightness >= 51) store.lightness = 1;
-    ESP_LOGI(TAG, "store.level ist %i", store.lightness);
-    mesh_example_info_store(); /* Store proper mesh example info */
 }
 
+void example_ble_mesh_send_lighting_level_set(void) {
+    send_lighting_level_set(0xFFFF, store.level);
+    store.level = store.level + 1;
+    if( store.level >= 51) store.level = 1;
+    ESP_LOGI(TAG, "store.level ist %i", store.level);
+    mesh_example_info_store(); /* Store proper mesh example info */
+}
 
 static void example_ble_mesh_light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
                                                esp_ble_mesh_light_client_cb_param_t *param)
@@ -352,10 +321,6 @@ static void example_ble_mesh_generic_client_cb(esp_ble_mesh_generic_client_cb_ev
         if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
             /* If failed to get the response of Generic OnOff Set, resend Generic OnOff Set  */
             example_ble_mesh_send_gen_onoff_set();
-        }
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET) {
-            /* If failed to get the response of Generic OnOff Set, resend Generic OnOff Set  */
-            example_ble_mesh_send_gen_level_set();
         }
         break;
     default:
