@@ -4,12 +4,22 @@
 ESP BLE Mesh Client Model Demo
 ========================
 
-This demo shows how to use the Generic OnOff Client Model to get/set the generic on/off state. The basic procedures are as follows:
+A proof of concept basing on ESP32 idf BLE Mesh onff_client example.
+Made to control a simple BT-lamp (Ledvance Volkslicht).
 
-1. Download and run this demo.
-2. Use any app for BLE Mesh to provision this device as well as the device running the Generic OnOff Server demo.
-3. After both onoff client and server devices are provisioned, use UART1 to input the unicast address of the element within the server device.
-4. The Generic OnOff Client will start to get and set Generic OnOff states periodically.
+ESP32 acts as serial to BT bridge.
+It opens a serial port (UART1 with RX = and TX =)
+
+Controll the lamp with inputs:
+
+'>lamp:on'    to switc lamp on
+'>lamp:off'   to switch lamp off
+'>lamp:25'  to dim the lamp values between 0..50 
+
+First of all you neet to provision and configure lamp and ESP32.
+At least generic switch on off and lightness server ande client have to be configured with same app key.
+
+Lamp needs to publish states (on/off ot lightness) to address or ESP (or address 0xffff for all) to provide ESP32 with its address.
 
 >**Notes:**
 >
