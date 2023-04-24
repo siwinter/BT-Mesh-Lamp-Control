@@ -19,7 +19,8 @@ Controll the lamp with inputs:
 *>lamp:25*  to dim the lamp values between 0..50 
 
 First of all you neet to provision and configure lamp and ESP32.
-At least generic switch on off and lightness server ande client have to be configured with same app key.
+
+At least generic switch on off and lightness models of server and client have to be configured with same app key.
 
 Lamp needs to publish states (on/off ot lightness) to address or ESP (or address 0xffff for all) to provide ESP32 with its address.
 
