@@ -13,7 +13,9 @@ It opens a serial port (UART1 with RX = and TX =)
 Controll the lamp with inputs:
 
 *>lamp:on*    to switc lamp on
+
 *>lamp:off*   to switch lamp off
+
 *>lamp:25*  to dim the lamp values between 0..50 
 
 First of all you neet to provision and configure lamp and ESP32.
