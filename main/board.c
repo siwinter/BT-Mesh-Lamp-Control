@@ -16,8 +16,6 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#include "driver/uart.h"
-
 #include "iot_button.h"
 
 #include "board.h"

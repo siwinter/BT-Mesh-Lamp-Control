@@ -22,6 +22,7 @@
 #include "esp_ble_mesh_lighting_model_api.h"
 
 #include "board.h"
+#include "uart.h"
 #include "ble_mesh_example_init.h"
 #include "ble_mesh_example_nvs.h"
 
@@ -181,34 +182,93 @@ static void example_ble_mesh_provisioning_cb(esp_ble_mesh_prov_cb_event_t event,
     }
 }
 
-void send_gen_onoff_set(uint16_t adr, uint8_t state)
+void send_msg(uint16_t* m)
 {
-    esp_ble_mesh_generic_client_set_state_t set = {0};
+    printf ("send_msg %i, %i, %i", m[0],m[1],m[2]) ;
     esp_ble_mesh_client_common_param_t common = {0};
     esp_err_t err = ESP_OK;
 
-    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
-//    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
-    common.model = onoff_client.model;
+    common.opcode = m[1];
+    
     common.ctx.net_idx = store.net_idx;
     common.ctx.app_idx = store.app_idx;
 
-    common.ctx.addr = adr;   /* s.w. to my lamp */
+    common.ctx.addr = m[0];   /* s.w. to my lamp */
     common.ctx.send_ttl = 3;
     common.ctx.send_rel = false;
     common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
     common.msg_role = ROLE_NODE;
 
-    set.onoff_set.op_en = false;
-    set.onoff_set.onoff = state;
-    set.onoff_set.tid = store.tid++;
+    switch (m[1]) {
+        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET:
+            {
+                common.model = onoff_client.model;
+                esp_ble_mesh_generic_client_get_state_t set = {0};
+                err = esp_ble_mesh_generic_client_get_state(&common, &set);
+                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
+                break; }
+        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET:
+        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK:
+            {
+                common.model = onoff_client.model;
+                esp_ble_mesh_generic_client_set_state_t set = {0};
+                set.onoff_set.op_en = false;
+                set.onoff_set.onoff = 1;
+                if (m[2] == 0) set.onoff_set.onoff = 0;
+                set.onoff_set.tid = store.tid++;
 
-    err = esp_ble_mesh_generic_client_set_state(&common, &set);
-    if (err) {
-        ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
-        return;
+                err = esp_ble_mesh_generic_client_set_state(&common, &set);
+                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
+                break; }
+        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_GET:
+            {
+                common.model = light_client.model;
+                esp_ble_mesh_light_client_get_state_t set = {0};
+                err = esp_ble_mesh_light_client_get_state(&common, &set);
+                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
+                break; }
+        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET:
+        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET_UNACK:
+            {
+                common.model = light_client.model;
+                esp_ble_mesh_light_client_set_state_t set = {0};
+
+                set.lightness_set.op_en = false;
+                set.lightness_set.lightness = m[2];
+                set.lightness_set.tid = store.tid++;
+                
+                err = esp_ble_mesh_light_client_set_state(&common, &set);
+                if (err)  ESP_LOGE(TAG, "Send Light Lighting Set failed");
+                break ; }
+        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_GET:
+            {
+                common.model = light_client.model;
+                esp_ble_mesh_light_client_get_state_t set = {0};
+                
+                err = esp_ble_mesh_light_client_get_state(&common, &set);
+                if (err)  ESP_LOGE(TAG, "Send Light Lighting Range Get failed");
+                break ; }
+
+        default: break ;
     }
 }
+
+void send_lighting_level_set(uint16_t adr, uint16_t level) {
+    uint16_t codes [3] ;
+    codes[0] = adr ;
+    codes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET;
+    codes[2] = level ;
+    send_msg(codes) ; }
+
+void send_gen_onoff_set(uint16_t adr, bool state) {
+    uint16_t codes [3] ;
+    codes[0] = adr ;
+    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
+//    mscodesg[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
+    codes[2] = 0;
+    if (state) codes[2] = 1 ;
+    send_msg(codes) ; }
+
 
 void example_ble_mesh_send_gen_onoff_set(void) {
     send_gen_onoff_set(0xFFFF, store.onoff);
@@ -216,32 +276,7 @@ void example_ble_mesh_send_gen_onoff_set(void) {
     mesh_example_info_store(); /* Store proper mesh example info */
 }
 
-void send_lighting_level_set(uint16_t adr, uint16_t level)
-{
-    esp_ble_mesh_light_client_set_state_t set = {0};
-    esp_ble_mesh_client_common_param_t common = {0};
-    esp_err_t err = ESP_OK;
 
-    common.opcode = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET;
-    common.model = light_client.model;
-    common.ctx.net_idx = store.net_idx;
-    common.ctx.app_idx = store.app_idx;
-    common.ctx.addr = adr;
-    common.ctx.send_ttl = 3;
-    common.ctx.send_rel = false;
-    common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
-    common.msg_role = ROLE_NODE;
-
-    set.lightness_set.op_en = false;
-    set.lightness_set.lightness = level;
-    set.lightness_set.tid = store.tid++;
-
-    err = esp_ble_mesh_light_client_set_state(&common, &set);
-    if (err) {
-        ESP_LOGE(TAG, "Send Light Lighting Set failed");
-        return;
-    }
-}
 
 void example_ble_mesh_send_lighting_level_set(void) {
     send_lighting_level_set(0xFFFF, store.level);
@@ -251,77 +286,87 @@ void example_ble_mesh_send_lighting_level_set(void) {
     mesh_example_info_store(); /* Store proper mesh example info */
 }
 
-static void example_ble_mesh_light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
+uint16_t msgCodes[4] ;
+int8_t nbrOfCodes = 0 ;
+
+static void light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
                                                esp_ble_mesh_light_client_cb_param_t *param)
 {
-    ESP_LOGI(TAG, "Light client, event %u, error code %d, opcode is 0x%04" PRIx32,
-        event, param->error_code, param->params->opcode);
+    ESP_LOGI(TAG, "Light client, event %u, error code %d, opcode is 0x%04" PRIx32, event, param->error_code, param->params->opcode);
+
+    msgCodes[0] = param->params->ctx.addr ;
+
+    switch (param->params->ctx.recv_op) {
+    case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS:
+        msgCodes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS ;
+        msgCodes[2] = param->status_cb.lightness_status.present_lightness ;
+        nbrOfCodes = 3 ;
+        break ;
+    case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_STATUS:
+        msgCodes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_STATUS ;
+        msgCodes[2] = param->status_cb.lightness_range_status.range_min ;
+        msgCodes[3] = param->status_cb.lightness_range_status.range_max ;
+        nbrOfCodes = 4 ;
+        break ;
+
+    }
+    if (nbrOfCodes > 0) evtMsg(nbrOfCodes, msgCodes) ;
 
     switch (event) {
     case ESP_BLE_MESH_LIGHT_CLIENT_GET_STATE_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_LIGHT_CLIENT_GET_STATE_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET, onoff %d", param->status_cb.lightness_status.present_lightness);
-        }
         break;
     case ESP_BLE_MESH_LIGHT_CLIENT_SET_STATE_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_LIGHT_CLIENT_SET_STATE_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET, lightness %d", param->status_cb.lightness_status.present_lightness);
-        }
         break;
     case ESP_BLE_MESH_LIGHT_CLIENT_PUBLISH_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_LIGHT_CLIENT_PUBLISH_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS, level %u", param->status_cb.lightness_status.present_lightness);
-        }
         break;
     case ESP_BLE_MESH_LIGHT_CLIENT_TIMEOUT_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_LIGHT_CLIENT_TIMEOUT_EVT");
-        // if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
-        //    // If failed to get the response of Generic OnOff Set, resend Generic OnOff Set
-        //    example_ble_mesh_send_gen_onoff_set();
-        //} 
         break;
     default:
         break;
     }
 }
 
-static void example_ble_mesh_generic_client_cb(esp_ble_mesh_generic_client_cb_event_t event,
+static void generic_client_cb(esp_ble_mesh_generic_client_cb_event_t event,
                                                esp_ble_mesh_generic_client_cb_param_t *param)
 {
-    ESP_LOGI(TAG, "Generic client, event %u, error code %d, opcode is 0x%04" PRIx32,
-        event, param->error_code, param->params->opcode);
+    ESP_LOGI(TAG, "Generic client, event %u, error code %d, opcode is 0x%04" PRIx32, event, param->error_code, param->params->opcode);
+
+    msgCodes[0] = param->params->ctx.addr ;
+    uint8_t nbrOfCodes = 0 ;
+
+    switch (param->params->ctx.recv_op) {
+    case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS:
+        msgCodes[1] = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS ;
+        msgCodes[2] = param->status_cb.onoff_status.present_onoff ;
+        nbrOfCodes = 3 ;
+        break ;
+    case ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS:
+        msgCodes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS ;
+        msgCodes[2] = param->status_cb.level_status.present_level ;
+        nbrOfCodes = 3 ;
+        break ;
+    default:
+        nbrOfCodes = 0 ;
+        break ;
+    }
+    if (nbrOfCodes > 0) evtMsg(nbrOfCodes, msgCodes) ;
 
     switch (event) {
     case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET, onoff %d", param->status_cb.onoff_status.present_onoff);
-        }
         break;
     case ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET, onoff %d", param->status_cb.onoff_status.present_onoff);
-        }
         break;
     case ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS, onoff %d", param->status_cb.onoff_status.present_onoff);
-        }
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS) {
-            ESP_LOGI(TAG, "ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS, level %d", param->status_cb.level_status.present_level);
-        }
         break;
     case ESP_BLE_MESH_GENERIC_CLIENT_TIMEOUT_EVT:
         ESP_LOGI(TAG, "ESP_BLE_MESH_GENERIC_CLIENT_TIMEOUT_EVT");
-        if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
-            /* If failed to get the response of Generic OnOff Set, resend Generic OnOff Set  */
-            example_ble_mesh_send_gen_onoff_set();
-        }
         break;
     default:
         break;
@@ -364,8 +409,8 @@ static esp_err_t ble_mesh_init(void)
     esp_err_t err = ESP_OK;
 
     esp_ble_mesh_register_prov_callback(example_ble_mesh_provisioning_cb);
-    esp_ble_mesh_register_generic_client_callback(example_ble_mesh_generic_client_cb);
-    esp_ble_mesh_register_light_client_callback(example_ble_mesh_light_client_cb);
+    esp_ble_mesh_register_generic_client_callback(generic_client_cb);
+    esp_ble_mesh_register_light_client_callback(light_client_cb);
     esp_ble_mesh_register_config_server_callback(example_ble_mesh_config_server_cb);
 
     err = esp_ble_mesh_init(&provision, &composition);
@@ -394,6 +439,8 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing...");
 
     board_init();
+
+    uartInit();
 
     err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
