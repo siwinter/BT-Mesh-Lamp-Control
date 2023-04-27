@@ -21,14 +21,33 @@
 #include "esp_ble_mesh_generic_model_api.h"
 #include "esp_ble_mesh_lighting_model_api.h"
 
-#include "board.h"
-#include "uart.h"
+//#include "board.h"
+//#include "uart.h"
 #include "ble_mesh_example_init.h"
 #include "ble_mesh_example_nvs.h"
 
+#include "ble_mesh.h"
 #define TAG "EXAMPLE"
 
 #define CID_ESP 0x02E5
+
+
+typedef void (* ble_model_evt_cb_t)(uint16_t adr, uint16_t opcode, uint16_t* params) ;
+
+//esp_err_t register_ble_model_evt(ble_model_evt_cb_t callback) ;
+
+ble_model_evt_cb_t modelEvtCb ;
+void register_ble_model_evt(ble_model_evt_cb_t callback) {
+    modelEvtCb = callback ; }
+
+//    p2BleModelCb = callback ;
+//}
+
+void sendEvent (uint16_t adr, uint16_t opcode, uint16_t* params) {
+    printf("ble_mesh: sendEvent") ;
+    modelEvtCb(adr, opcode, params) ;
+
+}
 
 static uint8_t dev_uuid[16] = { 0xdd, 0xdd };
 
@@ -41,7 +60,8 @@ static struct example_info_store {
 } __attribute__((packed)) store = {
     .net_idx = ESP_BLE_MESH_KEY_UNUSED,
     .app_idx = ESP_BLE_MESH_KEY_UNUSED,
-    .onoff = LED_OFF,
+    .onoff = 0,
+//    .onoff = LED_OFF,
     .level = 1,           //s.w.
     .tid = 0x0,
 };
@@ -134,7 +154,7 @@ static void prov_complete(uint16_t net_idx, uint16_t addr, uint8_t flags, uint32
 {
     ESP_LOGI(TAG, "net_idx: 0x%04x, addr: 0x%04x", net_idx, addr);
     ESP_LOGI(TAG, "flags: 0x%02x, iv_index: 0x%08" PRIx32, flags, iv_index);
-    board_led_operation(LED_G, LED_OFF);
+//    board_led_operation(LED_G, LED_OFF);
     store.net_idx = net_idx;
     /* mesh_example_info_store() shall not be invoked here, because if the device
      * is restarted and goes into a provisioned state, then the following events
@@ -310,7 +330,7 @@ static void light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
         break ;
 
     }
-    if (nbrOfCodes > 0) evtMsg(nbrOfCodes, msgCodes) ;
+    if (nbrOfCodes > 0) sendEvent (msgCodes[0], msgCodes[1], &msgCodes[2]) ;
 
     switch (event) {
     case ESP_BLE_MESH_LIGHT_CLIENT_GET_STATE_EVT:
@@ -353,7 +373,7 @@ static void generic_client_cb(esp_ble_mesh_generic_client_cb_event_t event,
         nbrOfCodes = 0 ;
         break ;
     }
-    if (nbrOfCodes > 0) evtMsg(nbrOfCodes, msgCodes) ;
+    if (nbrOfCodes > 0) sendEvent (msgCodes[0], msgCodes[1], &msgCodes[2]) ;
 
     switch (event) {
     case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
@@ -404,9 +424,34 @@ static void example_ble_mesh_config_server_cb(esp_ble_mesh_cfg_server_cb_event_t
     }
 }
 
-static esp_err_t ble_mesh_init(void)
+esp_err_t ble_mesh_init(void)
 {
     esp_err_t err = ESP_OK;
+
+    //------------------------------------------------------------------
+
+    err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+
+    err = bluetooth_init();
+    if (err) {
+        ESP_LOGE(TAG, "esp32_bluetooth_init failed (err %d)", err);
+        return err;
+    }
+
+    /* Open nvs namespace for storing/restoring mesh example info */
+    err = ble_mesh_nvs_open(&NVS_HANDLE);
+    if (err) {
+        return err;
+    }
+
+    ble_mesh_get_dev_uuid(dev_uuid);
+
+    //------------------------------------------------------------------
 
     esp_ble_mesh_register_prov_callback(example_ble_mesh_provisioning_cb);
     esp_ble_mesh_register_generic_client_callback(generic_client_cb);
@@ -427,11 +472,13 @@ static esp_err_t ble_mesh_init(void)
 
     ESP_LOGI(TAG, "BLE Mesh Node initialized");
 
-    board_led_operation(LED_G, LED_ON);
+//    board_led_operation(LED_G, LED_ON);
 
     return err;
 }
 
+
+/*
 void app_main(void)
 {
     esp_err_t err;
@@ -442,30 +489,11 @@ void app_main(void)
 
     uartInit();
 
-    err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(err);
-
-    err = bluetooth_init();
-    if (err) {
-        ESP_LOGE(TAG, "esp32_bluetooth_init failed (err %d)", err);
-        return;
-    }
-
-    /* Open nvs namespace for storing/restoring mesh example info */
-    err = ble_mesh_nvs_open(&NVS_HANDLE);
-    if (err) {
-        return;
-    }
-
-    ble_mesh_get_dev_uuid(dev_uuid);
-
-    /* Initialize the Bluetooth Mesh Subsystem */
+//-------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
+    // Initialize the Bluetooth Mesh Subsystem
     err = ble_mesh_init();
     if (err) {
         ESP_LOGE(TAG, "Bluetooth mesh init failed (err %d)", err);
     }
-}
+}*/

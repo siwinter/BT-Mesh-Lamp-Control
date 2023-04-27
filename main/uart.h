@@ -25,25 +25,9 @@ static const int RX_BUF_SIZE = 1024;
 #define TXD_PIN (GPIO_NUM_4)
 #define RXD_PIN (GPIO_NUM_5)
 
-extern void send_lighting_level_set(uint16_t adr, uint16_t level) ;
-extern void send_gen_onoff_set(uint16_t adr, bool state) ;
 
-/*
-class cDevices {
-  private:
-    cDevice * aDevice ;
-  public:
-    cDevices() {aDevice = NULL ;}
-
-    void do(char* msg) {
-        printf(msg) ;
-    }
-}
-
-*/
 
 bool msgReading = false ;
-bool msgReady = false ;
 int8_t msgIndex = 0 ;
 
 # define bufMax 100
@@ -56,56 +40,28 @@ uint16_t lightness = 0 ;
 
 uint16_t level = 0;
 
-char * cmdStr = "cmd/" ;
+typedef void (* uart_cb_t)(char* data) ;
+uart_cb_t cb ; //callback function to be called on msg received
+
 void msgDo(uint8_t nbrOfBytes, uint8_t* inBytes) {
     inBytes[nbrOfBytes] = 0;
-    printf((char*)inBytes);
+    printf("msgDo nbrOfBytes %i inBytes %s", nbrOfBytes, (char*)inBytes);
 
     for (int i=0; i<nbrOfBytes; i++) {
         if (inBytes[i] == '>') {
             msgReading = true ;
-            msgReady = false ;
             msgIndex = 0 ; }
         else {
             if (msgReading) {
                 if (msgIndex > bufMax) msgReading = false ;
                 else if ( (inBytes[i] == 10) || (inBytes[i] == 13)) {
                     msg[msgIndex] = 0 ;
-                    msgReady = true ;
                     msgReading = false ;
+                    printf("uart->msgDo msg ready : %s \n", msg) ;
+                    cb(msg) ;           //callback
                 }
                 else msg[msgIndex ++] = (char)inBytes[i] ;
-            }
-            int j = 0 ;
-            if (msgReady) {
-                printf("ready \n") ;
-                printf(msg) ;
-                for (j=0 ; j<strlen(cmdStr) ; j++) { 
-                    if (msg[j] != cmdStr[j]) msgReady = false ; } 
-                    }
-                printf("\n j = %i \n" , j);
-            if (msgReady) {
-                char* device = msg + strlen(cmdStr) ;
-                printf(" device \n") ;
-                printf(device) ;
-                j = 0 ;
-                while (device[j] != ':') j++ ;
-                char* code = device + j+1;
-                printf("\n code: ") ;
-                printf(code) ;
-                if ((code[0] == 'o') && (code[1] == 'n')) send_gen_onoff_set(adr, true) ;
-                else if  ((code[0] == 'o') && (code[1] == 'f')) send_gen_onoff_set(adr, false) ;
-                else {
-                    j = 0 ;
-                    level = 0;
-                    while (code[j] != 0) {
-                        if ((code[j] <'0') || (code[j] > '9')) break;
-                        level = (level *10) + code[j++] -'0' ;
-                    }
-                    send_lighting_level_set(adr, level) ;
-                }
-            }
-            } } }
+            } } } }
 
 
 void evtMsg(uint8_t nbr, uint16_t* msg) {
@@ -140,7 +96,7 @@ void evtMsg(uint8_t nbr, uint16_t* msg) {
     msgStr[strI] = 0;
 
     const int len = strlen(msgStr);
-    const int txBytes = uart_write_bytes(UART_NUM_1, msgStr, len);
+    /*const int txBytes = */uart_write_bytes(UART_NUM_1, msgStr, len);
 }
 /*
 void msgWork(uint8_t nbrOfBytes, uint8_t* inBytes) {
@@ -172,8 +128,11 @@ static void rx_task(void *arg)
     while (1) {
         const int rxBytes = uart_read_bytes(UART_NUM_1, inBuffer, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
         if (rxBytes > 0) {
+            inBuffer[rxBytes] = 0;
+            printf("rx_task received: %s \n", (char*)inBuffer) ;
 
             msgDo(rxBytes, inBuffer) ;
+            printf ("rx_task msgdone") ;
             inBuffer[rxBytes] = 0;
             ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, inBuffer);
             ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, inBuffer, rxBytes, ESP_LOG_INFO);
@@ -182,7 +141,8 @@ static void rx_task(void *arg)
     free(inBuffer);
 }
 
-void uartInit(void){
+void uartInit(uart_cb_t callback){
+    cb = callback ;
     const uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,
