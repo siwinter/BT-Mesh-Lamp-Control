@@ -64,11 +64,11 @@ class cLamp {
             int i ;
             for(i=0 ; i < 4 ; i++) if ("cmd/"[i] != msg[i]) return false ;
             msg = msg + i ;
-            printf("onmsg: msg0 = %s \n",msg);
+            printf("onMsg: msg0 = %s \n",msg);
             for(i=0 ; i < strlen(name) ; i++) if ( name[i] != msg[i] ) return false ;
             if (msg[i++] != ':') return false ;
             msg = msg + i ;
-            printf("onmsg: msg1 = %s \n",msg);
+            printf("onMsg: msg1 = %s \n",msg);
             char * param = strchr(msg, ',');
             if (param != NULL) {
                 param[0] = 0 ;
@@ -76,14 +76,16 @@ class cLamp {
 
             if ( strcmp(msg,"on") == 0) {send_gen_onoff_set(address, true); }
             else if ( strcmp(msg,"off") == 0) {send_gen_onoff_set(address, false); }
-            else if ( strcmp(msg,"level") == 0) {
+            else {
                 i = 0 ;
                 uint16_t level = 0 ;
                 while (param[i]){
                     if ( (param[i] < '0') || (param[i] > '9') ) return true;
                     level = level * 10 + (param[i] - '0');
                     i++; }
-                send_lighting_level_set(address, level) ; } 
+                if ( strcmp(msg,"level") == 0) {send_level_set(address, level) ; }
+                else if ( strcmp(msg,"light") == 0) {send_light_set(address, level) ; }
+            }
             return true ;}
         uint16_t getAddress() { return address ;} ;
 } ;

@@ -273,10 +273,18 @@ void send_msg(uint16_t* m)
     }
 }
 
-void send_lighting_level_set(uint16_t adr, uint16_t level) {
+void send_light_set(uint16_t adr, uint16_t level) {
     uint16_t codes [3] ;
     codes[0] = adr ;
     codes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET;
+    codes[2] = level ;
+    send_msg(codes) ; }
+
+void send_level_set(uint16_t adr, uint16_t level) {
+    uint16_t codes [3] ;
+    codes[0] = adr ;
+    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
+//    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
     codes[2] = level ;
     send_msg(codes) ; }
 

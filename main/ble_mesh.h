@@ -9,6 +9,7 @@ typedef void (* ble_model_evt_cb_t)(uint16_t adr, uint16_t opcode, uint16_t* par
 void register_ble_model_evt(ble_model_evt_cb_t callback) ;
 
 void send_gen_onoff_set(uint16_t adr, bool state);
-void send_lighting_level_set(uint16_t adr, uint16_t level) ;
+void send_level_set(uint16_t adr, uint16_t level) ;
+void send_light_set(uint16_t adr, uint16_t level)
 
 #endif
