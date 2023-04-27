@@ -20,7 +20,9 @@ extern "C" {
 }
 #define TAG "MAIN"
 
-void sendMsg(char* msg) {}
+void sendMsg(char* msg) {
+    printf("sendMsg: %s", msg) ;
+}
 
 class cLamp {
     private:
@@ -29,7 +31,8 @@ class cLamp {
     public :
         cLamp(uint16_t a) {
             address = a ;
-            strcpy(name,"lamp1") ; } ;
+            strcpy(name,"lamp1") ; 
+            printf("new Lamp %s adr: %i \n",name, address) ;} ;
 
         void onEvent(uint16_t opcode, uint16_t* params) {
             printf("lamp->onEvent opcode: %i \n", opcode) ;
@@ -64,29 +67,43 @@ class cLamp {
             int i ;
             for(i=0 ; i < 4 ; i++) if ("cmd/"[i] != msg[i]) return false ;
             msg = msg + i ;
-            printf("onMsg: msg0 = %s \n",msg);
+            printf("onMsg: msg1 = %s \n",msg);
             for(i=0 ; i < strlen(name) ; i++) if ( name[i] != msg[i] ) return false ;
             if (msg[i++] != ':') return false ;
             msg = msg + i ;
-            printf("onMsg: msg1 = %s \n",msg);
-            char * param = strchr(msg, ',');
-            if (param != NULL) {
-                param[0] = 0 ;
-                param = param + 1 ; }
+            printf("onMsg: msg2 = %s \n",msg);
+            uint8_t paramIndex = 0 ;
+            uint16_t paramArray[2] ;
+            char * params = strchr(msg, ',');
+            if (params != NULL) {
+                params [0] = 0 ;
+                params = params +1 ;}
 
-            if ( strcmp(msg,"on") == 0) {send_gen_onoff_set(address, true); }
-            else if ( strcmp(msg,"off") == 0) {send_gen_onoff_set(address, false); }
-            else {
+            while (params != NULL) {
+                char* nextParam = params ;
+                params = strchr(params, ',');
+                if(params != NULL) {
+                    params[0] = 0 ;
+                    params = params + 1 ; }
+                paramArray[paramIndex] = 0 ;
                 i = 0 ;
-                uint16_t level = 0 ;
-                while (param[i]){
-                    if ( (param[i] < '0') || (param[i] > '9') ) return true;
-                    level = level * 10 + (param[i] - '0');
+                while (nextParam[i]) {
+                    if ( (nextParam[i] < '0') || (nextParam[i] > '9') ) return true;
+                    paramArray[paramIndex] = paramArray[paramIndex] * 10 + (nextParam[i] - '0');
                     i++; }
-                if ( strcmp(msg,"level") == 0) {send_level_set(address, level) ; }
-                else if ( strcmp(msg,"light") == 0) {send_light_set(address, level) ; }
+                paramIndex++ ;}
+            printf( "onMsg paramIndex = %i :", paramIndex) ;
+            for (int j=0 ; j< paramIndex ; j++) printf(" %i", paramArray[j]) ;
+            printf("\n") ;
+
+            if (paramIndex == 0) {
+                if ( strcmp(msg,"on") == 0) send_gen_onoff_set(address, true);
+                else if ( strcmp(msg,"off") == 0) send_gen_onoff_set(address, false); }
+            else if (paramIndex == 1) {
+                if ( strcmp(msg,"level") == 0) {send_level_set(address, paramArray[0]) ; }
+                else if ( strcmp(msg,"light") == 0) {send_light_set(address, paramArray[0]) ; } }
+            return true ;
             }
-            return true ;}
         uint16_t getAddress() { return address ;} ;
 } ;
 
@@ -107,19 +124,17 @@ class cLamps {
                     lamps[nbrOfLamps++] = l ; }
                 else return ;
             }
-            printf("onEvent Lamp found \n") ;
-            l->onEvent(opcode, params) ; 
-        }
+            l->onEvent(opcode, params) ; }
+
         void onMsg(char* msg) {
-            printf("theLamps onMsg nbrOfLamps = %i \n", nbrOfLamps) ;
             for (int i=0 ; i<nbrOfLamps ; i++) if (lamps[i]->onMsg(msg)) return; 
-        printf("onMsg lamp not found");}
+            printf("onMsg lamp not found");}
 
 } ;
 
 cLamps * theLamps ;
 
-void modelCb (uint16_t adr, uint16_t opcode, uint16_t* params) {
+void eventReceived (uint16_t adr, uint16_t opcode, uint16_t* params) {
     theLamps->onEvent(adr, opcode, params) ; };
 
 void msgReceived(char* msg){
@@ -137,7 +152,7 @@ extern "C" void app_main(void)
     err = ble_mesh_init();
     if (err) ESP_LOGE(TAG, "Bluetooth mesh init failed (err %d)", err);
 
-    register_ble_model_evt(modelCb) ;
+    register_evt_cb(eventReceived) ;
 
     theLamps = new cLamps ;
 }

@@ -25,8 +25,6 @@ static const int RX_BUF_SIZE = 1024;
 #define TXD_PIN (GPIO_NUM_4)
 #define RXD_PIN (GPIO_NUM_5)
 
-
-
 bool msgReading = false ;
 int8_t msgIndex = 0 ;
 
@@ -41,11 +39,12 @@ uint16_t lightness = 0 ;
 uint16_t level = 0;
 
 typedef void (* uart_cb_t)(char* data) ;
-uart_cb_t cb ; //callback function to be called on msg received
+
+uart_cb_t msgCb ;
 
 void msgDo(uint8_t nbrOfBytes, uint8_t* inBytes) {
     inBytes[nbrOfBytes] = 0;
-    printf("msgDo nbrOfBytes %i inBytes %s", nbrOfBytes, (char*)inBytes);
+    printf("msgDo nbrOfBytes %i inBytes %s \n", nbrOfBytes, (char*)inBytes);
 
     for (int i=0; i<nbrOfBytes; i++) {
         if (inBytes[i] == '>') {
@@ -57,8 +56,7 @@ void msgDo(uint8_t nbrOfBytes, uint8_t* inBytes) {
                 else if ( (inBytes[i] == 10) || (inBytes[i] == 13)) {
                     msg[msgIndex] = 0 ;
                     msgReading = false ;
-                    printf("uart->msgDo msg ready : %s \n", msg) ;
-                    cb(msg) ;           //callback
+                    msgCb(msg) ;           //callback
                 }
                 else msg[msgIndex ++] = (char)inBytes[i] ;
             } } } }
@@ -142,7 +140,7 @@ static void rx_task(void *arg)
 }
 
 void uartInit(uart_cb_t callback){
-    cb = callback ;
+    msgCb = callback ;
     const uart_config_t uart_config = {
         .baud_rate = 115200,
         .data_bits = UART_DATA_8_BITS,

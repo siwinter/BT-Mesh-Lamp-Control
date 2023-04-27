@@ -37,7 +37,7 @@ typedef void (* ble_model_evt_cb_t)(uint16_t adr, uint16_t opcode, uint16_t* par
 //esp_err_t register_ble_model_evt(ble_model_evt_cb_t callback) ;
 
 ble_model_evt_cb_t modelEvtCb ;
-void register_ble_model_evt(ble_model_evt_cb_t callback) {
+void register_evt_cb(ble_model_evt_cb_t callback) {
     modelEvtCb = callback ; }
 
 //    p2BleModelCb = callback ;
@@ -307,7 +307,7 @@ void example_ble_mesh_send_gen_onoff_set(void) {
 
 
 void example_ble_mesh_send_lighting_level_set(void) {
-    send_lighting_level_set(0xFFFF, store.level);
+    send_light_set(0xFFFF, store.level);
     store.level = store.level + 1;
     if( store.level >= 51) store.level = 1;
     ESP_LOGI(TAG, "store.level ist %i", store.level);
