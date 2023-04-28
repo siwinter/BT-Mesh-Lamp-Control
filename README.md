@@ -29,10 +29,6 @@ Controll the lamp with inputs:
 
 First of all you neet to provision and configure lamp and ESP32.
 
-At least generic switch on off and lightness models of server and client have to be configured with same app key.
-
-Lamp needs to publish states (on/off ot lightness) to address or ESP (or address 0xffff for all) to provide ESP32 with its address.
-
 >**Notes:**
 >
 >1. The NetKey index and AppKey index are fixed to 0x0000 in this demo.
