@@ -20,9 +20,6 @@ extern "C" {
 }
 #define TAG "MAIN"
 
-void sendMsg(char* msg) {
-    printf("sendMsg: %s", msg) ;
-}
 
 class cLamp {
     private:
@@ -42,27 +39,27 @@ class cLamp {
             strcat(outString, ":") ;
             switch (opcode) {
             case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS:
-                if(params[0] == 0) strcat(outString, "off") ;
-                else strcat(outString, "on") ;
+                if(params[0] == 0) strcat(outString, "off\n") ;
+                else strcat(outString, "on\n") ;
                 break;
             case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS:
-                strcat(outString, "level,") ;
+                strcat(outString, "light,") ;
                 itoa (params[0],outString + strlen(outString), 10);
+                strcat(outString, "\n") ;
                 break;
             case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_STATUS:
                 strcat(outString, "range,") ;
                 itoa (params[0],outString + strlen(outString),10) ;
                 strcat(outString, ",") ;
                 itoa (params[1],outString + strlen(outString),10) ;
+                strcat(outString, "\n") ;
                 break;
             default:
                 printf("unexpected opcode: %i", opcode) ;
                 return ;  }   // nothing to send
-            sendMsg(outString) ; }
+            tx_task(outString) ; }
 
         bool onMsg(char* msg) {
-            printf("onmsg: msg0 = %s \n",msg);
-            printf("onmsg: name = %s \n",name);
 
             int i ;
             for(i=0 ; i < 4 ; i++) if ("cmd/"[i] != msg[i]) return false ;

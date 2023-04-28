@@ -274,6 +274,7 @@ void send_msg(uint16_t* m)
 }
 
 void send_light_set(uint16_t adr, uint16_t level) {
+    printf("send light %i to adr %i", level, adr) ;
     uint16_t codes [3] ;
     codes[0] = adr ;
     codes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET;
@@ -281,6 +282,7 @@ void send_light_set(uint16_t adr, uint16_t level) {
     send_msg(codes) ; }
 
 void send_level_set(uint16_t adr, uint16_t level) {
+    printf("send level %i to adr %i\n", level, adr) ;
     uint16_t codes [3] ;
     codes[0] = adr ;
     codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
@@ -289,6 +291,8 @@ void send_level_set(uint16_t adr, uint16_t level) {
     send_msg(codes) ; }
 
 void send_gen_onoff_set(uint16_t adr, bool state) {
+    if (state) printf("send on "); else printf("send off ");
+    printf("to adr %i", adr) ;
     uint16_t codes [3] ;
     codes[0] = adr ;
     codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
