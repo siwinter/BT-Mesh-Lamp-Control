@@ -1,7 +1,7 @@
 | Supported Targets | ESP32 |
 | ----------------- | ----- |
 
-ESP BLE Mesh Client Model Demo
+ESP Serial to BLE Mesh Client
 ========================
 
 A proof of concept basing on ESP32 idf BLE Mesh onff_client example.
