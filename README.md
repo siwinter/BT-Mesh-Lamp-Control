@@ -1,7 +1,7 @@
 | Supported Targets | ESP32 |
 | ----------------- | ----- |
 
-ESP Serial to BLE Mesh Client
+ESP Serial to BLE Mesh Bridge
 ========================
 
 A proof of concept basing on ESP32 idf BLE Mesh onff_client example.
@@ -10,13 +10,22 @@ Made to control a simple BT-lamp (Ledvance Volkslicht).
 ESP32 acts as serial to BT bridge.
 It opens a serial port (UART1 with RX = and TX =)
 
+Configuration
+-------------
+Provision  and Configure Lamp and ESP with the nRF Mesh app.
+Setup at least generic onOff and lighting model wit the same app key.
+Let the lamp publish its state periodically.
+
+Usage
+-----
+
 Controll the lamp with inputs:
 
 *>lamp:on*    to switc lamp on
 
 *>lamp:off*   to switch lamp off
 
-*>lamp:25*  to dim the lamp values between 0..50 
+*>lamp:light,25*  to dim the lamp values between 0..50 
 
 First of all you neet to provision and configure lamp and ESP32.
 
