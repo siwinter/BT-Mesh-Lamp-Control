@@ -78,14 +78,14 @@ static void button1_tap_cb(void* arg)
 {
     ESP_LOGI(TAG, "btn1 cb (%s)", (char *)arg);
 
-    example_ble_mesh_send_gen_onoff_set();
+//    example_ble_mesh_send_gen_onoff_set();
 }
 
 static void button2_tap_cb(void* arg)
 {
     ESP_LOGI(TAG, "btn2 cb (%s)", (char *)arg);
 
-    example_ble_mesh_send_lighting_level_set();
+//    example_ble_mesh_send_lighting_level_set();
 }
 
 static void board_button_init(void)
