@@ -17,58 +17,61 @@ extern "C" {
 #include "uart.h"
 
 #include "ble_mesh.h"
+#include "esp_ble_mesh_generic_model_api.h"
+#include "esp_ble_mesh_lighting_model_api.h"
 }
 #define TAG "MAIN"
-
 
 class cLamp {
     private:
         uint16_t address ;
         char name[19] ;
     public :
-        cLamp(uint16_t a) {
+        cLamp(uint16_t a, uint8_t n) {
             address = a ;
-            strcpy(name,"lamp1") ; 
-            printf("new Lamp %s adr: %i \n",name, address) ;} ;
+            strcpy(name,"lamp") ;
+            itoa(n, name + strlen(name), 10) ;} ;
+        cLamp(uint16_t a, const char* n) {
+            address = a ;
+            strcpy(name, n) ;} ;
 
-        void onEvent(uint16_t opcode, uint16_t* params) {
-            printf("lamp->onEvent opcode: %i \n", opcode) ;
-            char outString[20];
+        bool onEvent(client_status_cb_t* status, esp_ble_mesh_client_common_param_t* params) {
+            if (params->ctx.addr != address) return false ;
+            char outString[100];
             strcpy(outString, ">evt/");
             strcat(outString, name) ;
             strcat(outString, ":") ;
-            switch (opcode) {
+            switch (params->opcode) {
             case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS:
-                if(params[0] == 0) strcat(outString, "off\n") ;
-                else strcat(outString, "on\n") ;
+                if (status->generic->onoff_status.present_onoff) strcat(outString, "on\n") ;
+                else strcat(outString, "off\n") ;
                 break;
             case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS:
                 strcat(outString, "light,") ;
-                itoa (params[0],outString + strlen(outString), 10);
+                itoa (status->light->lightness_status.present_lightness,outString + strlen(outString), 10);
                 strcat(outString, "\n") ;
                 break;
             case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_STATUS:
                 strcat(outString, "range,") ;
-                itoa (params[0],outString + strlen(outString),10) ;
+                itoa (status->light->lightness_range_status.range_min,outString + strlen(outString),10) ;
                 strcat(outString, ",") ;
-                itoa (params[1],outString + strlen(outString),10) ;
+                itoa (status->light->lightness_range_status.range_max,outString + strlen(outString),10) ;
                 strcat(outString, "\n") ;
                 break;
             default:
-                printf("unexpected opcode: %i", opcode) ;
-                return ;  }   // nothing to send
-            tx_task(outString) ; }
+//                printf("unexpected opcode: %i", opcode) ;
+                return true;  }   // nothing to send
+            tx_task(outString) ; 
+            return true; }
 
         bool onMsg(char* msg) {
 
             int i ;
             for(i=0 ; i < 4 ; i++) if ("cmd/"[i] != msg[i]) return false ;
             msg = msg + i ;
-            printf("onMsg: msg1 = %s \n",msg);
             for(i=0 ; i < strlen(name) ; i++) if ( name[i] != msg[i] ) return false ;
             if (msg[i++] != ':') return false ;
             msg = msg + i ;
-            printf("onMsg: msg2 = %s \n",msg);
             uint8_t paramIndex = 0 ;
             uint16_t paramArray[2] ;
             char * params = strchr(msg, ',');
@@ -105,38 +108,20 @@ class cLamp {
 } ;
 
 #define lampsMax 16
+uint8_t nbrOfLamps ;
+cLamp* theLamps[lampsMax] ;
 
-class cLamps {
-    private :
-        uint8_t nbrOfLamps ;
-        cLamp* lamps[lampsMax] ;
-    public :
-        cLamps() { nbrOfLamps = 0 ; }
-        void onEvent(uint16_t adr, uint16_t opcode, uint16_t* params) {
-            cLamp * l = NULL ;
-            for (int i=0 ; i<nbrOfLamps ; i++) if(lamps[i]->getAddress() == adr) l=lamps[i] ;
-            if (l == NULL) {
-                if (nbrOfLamps < lampsMax) {
-                    l = new cLamp(adr) ;
-                    lamps[nbrOfLamps++] = l ; }
-                else return ;
-            }
-            l->onEvent(opcode, params) ; }
-
-        void onMsg(char* msg) {
-            for (int i=0 ; i<nbrOfLamps ; i++) if (lamps[i]->onMsg(msg)) return; 
-            printf("onMsg lamp not found");}
-
-} ;
-
-cLamps * theLamps ;
-
-void eventReceived (uint16_t adr, uint16_t opcode, uint16_t* params) {
-    theLamps->onEvent(adr, opcode, params) ; };
+void eventReceived (client_status_cb_t* status, esp_ble_mesh_client_common_param_t* params) {
+    for (int i=0 ; i<nbrOfLamps ; i++) 
+        if (theLamps[i]->onEvent(status, params)) return;
+    cLamp* l = new cLamp(params->ctx.addr, nbrOfLamps) ;
+    theLamps[nbrOfLamps++] = l ;
+    l->onEvent(status, params) ;
+};
 
 void msgReceived(char* msg){
-    printf("main msgRecieved msg: %s \n", msg);
-    theLamps->onMsg(msg);}
+    for (int i=0 ; i<nbrOfLamps ; i++) if (theLamps[i]->onMsg(msg)) return;
+    printf("msgReceived: lamp not found");}
 
 extern "C" void app_main(void)
 {
@@ -151,5 +136,6 @@ extern "C" void app_main(void)
 
     register_evt_cb(eventReceived) ;
 
-    theLamps = new cLamps ;
+    nbrOfLamps = 0 ;
+    theLamps[nbrOfLamps++] = new cLamp(0xFFFF, "lamps") ;
 }
