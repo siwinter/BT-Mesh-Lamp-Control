@@ -17,8 +17,14 @@ typedef void (* ble_model_evt_cb_t)(client_status_cb_t* status, esp_ble_mesh_cli
 
 void register_evt_cb(ble_model_evt_cb_t callback) ;
 
-void send_gen_onoff_set(uint16_t adr, bool state);
-void send_level_set(uint16_t adr, uint16_t level) ;
-void send_light_set(uint16_t adr, uint16_t level) ;
+void get_gen_onoff(uint16_t adr) ;
+void get_gen_level(uint16_t adr) ;
+void set_gen_onoff(uint16_t adr, bool state) ;
+void set_gen_level(uint16_t adr, uint16_t level) ;
+
+void get_light_lightness(uint16_t adr) ;
+void get_light_range(uint16_t adr) ;
+void set_light_lightness(uint16_t adr, uint16_t level) ;
+
 
 #endif

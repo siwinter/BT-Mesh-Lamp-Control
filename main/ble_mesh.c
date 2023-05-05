@@ -40,16 +40,11 @@ static uint8_t dev_uuid[16] = { 0xdd, 0xdd };
 static struct example_info_store {
     uint16_t net_idx;   /* NetKey Index */
     uint16_t app_idx;   /* AppKey Index */
-    uint8_t  onoff;     /* Remote OnOff */
-    uint16_t  level;    // s.w. /* Remote Level */
     uint8_t  tid;       /* Message TID */ //s.w. ggf braucht man für jedes Model je einen tid
 } __attribute__((packed)) store = {
     .net_idx = ESP_BLE_MESH_KEY_UNUSED,
     .app_idx = ESP_BLE_MESH_KEY_UNUSED,
-    .onoff = 0,
-//    .onoff = LED_OFF,
-    .level = 1,           //s.w.
-    .tid = 0x0,
+    .tid = 0x4f,
 };
 
 static nvs_handle_t NVS_HANDLE;
@@ -102,15 +97,8 @@ static esp_ble_mesh_comp_t composition = {
 /* Disable OOB security for SILabs Android app */
 static esp_ble_mesh_prov_t provision = {
     .uuid = dev_uuid,
-#if 0
-    .output_size = 4,
-    .output_actions = ESP_BLE_MESH_DISPLAY_NUMBER,
-    .input_actions = ESP_BLE_MESH_PUSH,
-    .input_size = 4,
-#else
     .output_size = 0,
     .output_actions = 0,
-#endif
 };
 
 static void mesh_example_info_store(void)
@@ -129,8 +117,8 @@ static void mesh_example_info_restore(void)
     }
 
     if (exist) {
-        ESP_LOGI(TAG, "Restore, net_idx 0x%04x, app_idx 0x%04x, level xy, onoff %u, tid 0x%02x",
-            store.net_idx, store.app_idx, store.onoff, store.tid);
+        ESP_LOGI(TAG, "Restore, net_idx 0x%04x, app_idx 0x%04x, level xy, tid 0x%02x",
+            store.net_idx, store.app_idx, store.tid);
     }
 }
 
@@ -185,101 +173,99 @@ static void example_ble_mesh_provisioning_cb(esp_ble_mesh_prov_cb_event_t event,
         break;
     }
 }
+//--------------------------- SET / GET COMMANDs ------------------------------------------------
+void completeParam(esp_ble_mesh_client_common_param_t * common) {
+    common->ctx.net_idx = store.net_idx;
+    common->ctx.app_idx = store.app_idx;
 
-void send_msg(uint16_t* m)
-{
-    printf ("send_msg %i, %i, %i", m[0],m[1],m[2]) ;
-    esp_ble_mesh_client_common_param_t common = {0};
-    esp_err_t err = ESP_OK;
-
-    common.opcode = m[1];
-    
-    common.ctx.net_idx = store.net_idx;
-    common.ctx.app_idx = store.app_idx;
-
-    common.ctx.addr = m[0];   /* s.w. to my lamp */
-    common.ctx.send_ttl = 3;
-    common.ctx.send_rel = false;
-    common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
-    common.msg_role = ROLE_NODE;
-
-    switch (m[1]) {
-        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET:
-            {
-                common.model = onoff_client.model;
-                esp_ble_mesh_generic_client_get_state_t set = {0};
-                err = esp_ble_mesh_generic_client_get_state(&common, &set);
-                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
-                break; }
-        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET:
-        case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK:
-            {
-                common.model = onoff_client.model;
-                esp_ble_mesh_generic_client_set_state_t set = {0};
-                set.onoff_set.op_en = false;
-                set.onoff_set.onoff = 1;
-                if (m[2] == 0) set.onoff_set.onoff = 0;
-                set.onoff_set.tid = store.tid++;
-
-                err = esp_ble_mesh_generic_client_set_state(&common, &set);
-                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
-                break; }
-        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_GET:
-            {
-                common.model = light_client.model;
-                esp_ble_mesh_light_client_get_state_t set = {0};
-                err = esp_ble_mesh_light_client_get_state(&common, &set);
-                if (err)  ESP_LOGE(TAG, "Send Generic OnOff Set Unack failed");
-                break; }
-        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET:
-        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET_UNACK:
-            {
-                common.model = light_client.model;
-                esp_ble_mesh_light_client_set_state_t set = {0};
-
-                set.lightness_set.op_en = false;
-                set.lightness_set.lightness = m[2];
-                set.lightness_set.tid = store.tid++;
-                
-                err = esp_ble_mesh_light_client_set_state(&common, &set);
-                if (err)  ESP_LOGE(TAG, "Send Light Lighting Set failed");
-                break ; }
-        case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_GET:
-            {
-                common.model = light_client.model;
-                esp_ble_mesh_light_client_get_state_t set = {0};
-                
-                err = esp_ble_mesh_light_client_get_state(&common, &set);
-                if (err)  ESP_LOGE(TAG, "Send Light Lighting Range Get failed");
-                break ; }
-
-        default: break ;
-    }
+    common->ctx.send_ttl = 3;
+    common->ctx.send_rel = false;
+    common->msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
+    common->msg_role = ROLE_NODE;
 }
+void get_gen_onoff(uint16_t adr) {
+    esp_ble_mesh_client_common_param_t common = {0};
+    esp_ble_mesh_generic_client_get_state_t get = {0};
 
-void send_light_set(uint16_t adr, uint16_t level) {
-    uint16_t codes [3] ;
-    codes[0] = adr ;
-    codes[1] = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET;
-    codes[2] = level ;
-    send_msg(codes) ; }
+    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET ;
+    common.ctx.addr = adr ;
+    common.model = onoff_client.model;
+    completeParam(&common) ;
+    if (esp_ble_mesh_generic_client_get_state(&common, &get))  ESP_LOGE(TAG, "Get Generic OnOff failed"); }
 
-void send_level_set(uint16_t adr, uint16_t level) {
-    uint16_t codes [3] ;
-    codes[0] = adr ;
-    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
-//    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
-    codes[2] = level ;
-    send_msg(codes) ; }
+void get_gen_level(uint16_t adr)  {
+    esp_ble_mesh_client_common_param_t common = {0};
+    esp_ble_mesh_generic_client_get_state_t get = {0};
 
-void send_gen_onoff_set(uint16_t adr, bool state) {
-    uint16_t codes [3] ;
-    codes[0] = adr ;
-    codes[1] = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
-//    mscodesg[1] = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
-    codes[2] = 0;
-    if (state) codes[2] = 1 ;
-    send_msg(codes) ; }
+    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET ;
+    common.ctx.addr = adr ;
+    common.model = level_client.model;
+    completeParam(&common) ;
+    if( esp_ble_mesh_generic_client_get_state(&common, &get)) ESP_LOGE(TAG, "Get Generic level failed"); }
+
+
+void set_gen_onoff(uint16_t adr, bool state) {
+    esp_ble_mesh_client_common_param_t common = {0};
+
+    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET ;
+//    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK ;
+    common.ctx.addr = adr ;
+    common.model = onoff_client.model;;
+    completeParam(&common) ;
+
+    esp_ble_mesh_generic_client_set_state_t set = {0};
+    set.onoff_set.op_en = false;
+    if (state) set.onoff_set.onoff = 1; else set.onoff_set.onoff = 0;
+    set.onoff_set.tid = store.tid++;
+
+    if( esp_ble_mesh_generic_client_set_state(&common, &set)) ESP_LOGE(TAG, "Set Generic OnOff failed"); }
+
+void set_gen_level(uint16_t adr, uint16_t level) {
+    esp_ble_mesh_client_common_param_t common = {0};
+
+    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET ;
+//    common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK ;
+    common.ctx.addr = adr ;
+    common.model = level_client.model;
+    completeParam(&common) ;
+    esp_ble_mesh_generic_client_set_state_t set = {0};
+    set.level_set.op_en = false;
+    set.level_set.level = level;
+    set.level_set.tid = store.tid++;
+                
+    if ( esp_ble_mesh_generic_client_set_state(&common, &set) ) ESP_LOGE(TAG, "set_gen_level failed"); }
+
+void get_light_status(uint16_t adr, uint16_t opcode) {
+    esp_ble_mesh_client_common_param_t common = {0};
+    esp_ble_mesh_light_client_get_state_t get = {0};
+
+    common.opcode = opcode ;
+    common.ctx.addr = adr ;
+    common.model = light_client.model;
+    completeParam(&common) ;
+
+    if ( esp_ble_mesh_light_client_get_state(&common, &get)) ESP_LOGE(TAG, "Get Light Status failed"); }
+
+void get_light_lightness(uint16_t adr) {
+    get_light_status(adr, ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_GET) ; }
+
+void get_light_range(uint16_t adr) {
+    get_light_status(adr, ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_RANGE_GET) ; }
+
+void set_light_lightness(uint16_t adr, uint16_t level) {
+    esp_ble_mesh_client_common_param_t common = {0};
+
+    common.opcode = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET ;
+//    common.opcode = ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_SET_UNACK ;
+    common.ctx.addr = adr ;
+    common.model = light_client.model;
+    completeParam(&common) ;
+    esp_ble_mesh_light_client_set_state_t set = {0};
+    set.lightness_set.op_en = false;
+    set.lightness_set.lightness = level;
+    set.lightness_set.tid = store.tid++;
+                
+    if (esp_ble_mesh_light_client_set_state(&common, &set)) ESP_LOGE(TAG, "Set Light Lighting failed"); }
 
 static void light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
                                                esp_ble_mesh_light_client_cb_param_t *param)
@@ -292,7 +278,8 @@ static void light_client_cb(esp_ble_mesh_light_client_cb_event_t event,
 
 static void generic_client_cb(esp_ble_mesh_generic_client_cb_event_t event,
                                                esp_ble_mesh_generic_client_cb_param_t *param) {
-    ESP_LOGI(TAG, "Generic client, event %u, error code %d, opcode is 0x%04" PRIx32, event, param->error_code, param->params->opcode);
+    ESP_LOGI(TAG, "Generic client, event %u, error code %d, rec opcode is 0x%04" PRIx32,
+     event, param->error_code, /*param->params->opcode, */param->params->ctx.recv_op);
      
     client_status_cb_t p;
     p.generic = &param->status_cb ;     

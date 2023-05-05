@@ -41,10 +41,15 @@ class cLamp {
             strcpy(outString, ">evt/");
             strcat(outString, name) ;
             strcat(outString, ":") ;
-            switch (params->opcode) {
+            switch (params->ctx.recv_op) {
             case ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS:
                 if (status->generic->onoff_status.present_onoff) strcat(outString, "on\n") ;
                 else strcat(outString, "off\n") ;
+                break;
+            case ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS:
+                strcat(outString, "level,") ;
+                itoa (status->generic->level_status.present_level,outString + strlen(outString), 10);
+                strcat(outString, "\n") ;
                 break;
             case ESP_BLE_MESH_MODEL_OP_LIGHT_LIGHTNESS_STATUS:
                 strcat(outString, "light,") ;
@@ -65,7 +70,6 @@ class cLamp {
             return true; }
 
         bool onMsg(char* msg) {
-
             int i ;
             for(i=0 ; i < 4 ; i++) if ("cmd/"[i] != msg[i]) return false ;
             msg = msg + i ;
@@ -92,16 +96,17 @@ class cLamp {
                     paramArray[paramIndex] = paramArray[paramIndex] * 10 + (nextParam[i] - '0');
                     i++; }
                 paramIndex++ ;}
-            printf( "onMsg paramIndex = %i :", paramIndex) ;
-            for (int j=0 ; j< paramIndex ; j++) printf(" %i", paramArray[j]) ;
-            printf("\n") ;
 
             if (paramIndex == 0) {
-                if ( strcmp(msg,"on") == 0) send_gen_onoff_set(address, true);
-                else if ( strcmp(msg,"off") == 0) send_gen_onoff_set(address, false); }
+                if (strcmp(msg,"on") == 0) set_gen_onoff(address, true);
+                else if (strcmp(msg,"off") == 0) set_gen_onoff(address, false);
+                else if (strcmp(msg,"get_state") == 0) get_gen_onoff(address) ;
+                else if (strcmp(msg,"get_level") == 0) get_gen_level(address) ;
+                else if (strcmp(msg,"get_light") == 0) get_light_lightness(address) ;
+                else if (strcmp(msg,"get_range") == 0) get_light_range(address) ; }
             else if (paramIndex == 1) {
-                if ( strcmp(msg,"level") == 0) {send_level_set(address, paramArray[0]) ; }
-                else if ( strcmp(msg,"light") == 0) {send_light_set(address, paramArray[0]) ; } }
+                if ( strcmp(msg,"level") == 0) {set_gen_level(address, paramArray[0]) ; }
+                else if ( strcmp(msg,"light") == 0) {set_light_lightness(address, paramArray[0]) ; } }
             return true ;
             }
         uint16_t getAddress() { return address ;} ;
