@@ -21,13 +21,13 @@ Usage
 
 Controll the lamp with inputs:
 
-*>lamp:on*    to switc lamp on
+*>lamp:on*    to switch lamp on
 
 *>lamp:off*   to switch lamp off
 
 *>lamp:light,25*  to dim the lamp values between 0..50 
 
-First of all you neet to provision and configure lamp and ESP32.
+First of all you need to provision and configure lamp and ESP32.
 
 >**Notes:**
 >
