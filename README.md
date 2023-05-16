@@ -31,5 +31,4 @@ First of all you need to provision and configure lamp and ESP32.
 
 >**Notes:**
 >
->1. The NetKey index and AppKey index are fixed to 0x0000 in this demo.
->2. If the client device is re-provisioned, but the server device is not, the first few get/set messages from the client will be treated as replay attacks. To avoid this, both devices should be re-provisioned prior to transmitting messages.
+>1. If the client device is re-provisioned, but the server device is not, the first few get/set messages from the client will be treated as replay attacks. To avoid this, both devices should be re-provisioned prior to transmitting messages.
