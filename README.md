@@ -7,34 +7,23 @@ ESP Serial to BLE Mesh Bridge
 A proof of concept basing on ESP32 idf BLE Mesh onff_client example.
 Made to control a simple BT-lamp (Ledvance Volkslicht).
 
-ESP32 acts as serial to BT bridge.
-It opens a serial port (UART1 with RX = and TX =)
+ESP32 acts as serial to BTMesh bridge.
+It opens a serial port (UART1 with RXD = pin 5 and TXD = pin 4)
 
 Configuration
 -------------
-Provision  and Configure Lamp and ESP with the nRF Mesh app.
-Setup at least generic onOff and lighting model wit the same app key.
+Provision and Configure Lamp and ESP with the nRF Mesh app.
+Setup at least generic onOff and lighting model with the same app key.
 Let the lamp publish its state periodically.
 
 Usage
 -----
+Send and receive text messages on the serial port.
+Message begins with ">" and ends with newline (\n).
 
-Controll the lamp with inputs:
+Message structure: 
 
-*>lamp:on*    to switch lamp on
-
-*>lamp:off*   to switch lamp off
-
-*>lamp:light,25*  to dim the lamp values between 0..50 
-
-First of all you need to provision and configure lamp and ESP32.
-
->**Notes:**
->
->1. If the client device is re-provisioned, but the server device is not, the first few get/set messages from the client will be treated as replay attacks. To avoid this, both devices should be re-provisioned prior to transmitting messages.
-
-
->msgType/device/command:parameter
+*>msgType/device/command:parameter*
 
 msgType
   cmd : command send to device
@@ -51,6 +40,25 @@ command
           parameter int value within ligtness range (0 .. 50)
   get   : to order report from device (cmd)
           parameter:  range
+
+
+Controll the lamp with inputs:
+
+
+*>lamp:on*    to switch lamp on
+
+*>lamp:off*   to switch lamp off
+
+*>lamp:light,25*  to dim the lamp values between 0..50 
+
+First of all you need to provision and configure lamp and ESP32.
+
+>**Notes:**
+>
+>1. If the client device is re-provisioned, but the server device is not, the first few get/set messages from the client will be treated as replay attacks. To avoid this, both devices should be re-provisioned prior to transmitting messages.
+
+
+
 
 examples
 >cmd/lamps/state:on
