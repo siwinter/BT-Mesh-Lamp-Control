@@ -1,5 +1,5 @@
 set(srcs
-        "board.c")
+        "ble_mesh.c")
 
-idf_component_register(SRCS "ble_mesh.c" "main.cpp" "${srcs}"
+idf_component_register(SRCS "main.cpp" "${srcs}"
                     INCLUDE_DIRS  ".")

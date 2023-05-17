@@ -32,3 +32,35 @@ First of all you need to provision and configure lamp and ESP32.
 >**Notes:**
 >
 >1. If the client device is re-provisioned, but the server device is not, the first few get/set messages from the client will be treated as replay attacks. To avoid this, both devices should be re-provisioned prior to transmitting messages.
+
+
+>msgType/device/command:parameter
+
+msgType
+  cmd : command send to device
+  evt : event received from device
+
+device
+  lamps : for all devices ist mapped to BT-Mesh addresse 0xFFFF
+  lampx : for a specific device (x = 1...n)
+
+command
+  state : to switch lamp (cmd) or to report state (evt)
+          parameter "on" or "off"
+  light : to dim lamp (cmd) or to report lightness (evt)
+          parameter int value within ligtness range (0 .. 50)
+  get   : to order report from device (cmd)
+          parameter:  range
+
+examples
+>cmd/lamps/state:on
+>evt/lamp1/state:on
+>evt/lamp1/ligth:25
+>cmd/lamp1/state:off
+>evt/lamp1/state:off
+>evt/lamp1/ligth:0
+>cmd/lamp1/light:50
+>cmd/lamp1/get:range
+>cmd/lamp1/get:state
+>cmd/lamp1/get:light
+
