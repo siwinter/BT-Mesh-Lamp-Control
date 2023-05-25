@@ -30,8 +30,7 @@ msgType
     cmd : command send to device
     evt : event received from device
 device
-    lamps : for all devices ist mapped to BT-Mesh addresse 0xFFFF
-    lampx : for a specific device (x = 1...n)
+    BT_x : where x is the device's BT-Mesh address ( ex: BT_ffff for all devices)
 command
     state : to switch lamp (cmd) or to report state (evt)
             parameter "on" or "off"
@@ -42,16 +41,17 @@ command
 ```
 ## Examples
 ```
->cmd/lamps/state:on
->evt/lamp1/state:on
->evt/lamp1/ligth:25
->cmd/lamp1/state:off
->evt/lamp1/state:off
->evt/lamp1/ligth:0
->cmd/lamp1/light:50
->cmd/lamp1/get:range
->cmd/lamp1/get:state
->cmd/lamp1/get:light
+>cmd/BT_ffff/state:on       // switch all devices on
+>evt/BT_11/state:on         // device with address 11 is switched on
+>evt/BT_11/ligth:25         // lightnes of device is 25
+>cmd/BT_11/state:off        // switch device off
+>evt/BT_11/state:off        // device is switched off
+>evt/BT_11/ligth:0          // lightnes of device is 0
+>cmd/BT_11/get:range        // get range of lightness
+>evt/BT_11/range:1-50       // range is 1 to 50
+>cmd/BT_11/light:50         // set lightness to 50
+>cmd/BT_11/get:state        // get switching state (on or off)
+>cmd/BT_11/get:light        // get lightness
 ```
 >**Notes:**
 >
