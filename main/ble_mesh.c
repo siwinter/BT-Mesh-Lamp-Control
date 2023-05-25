@@ -205,6 +205,7 @@ void get_gen_level(uint16_t adr)  {
 
 
 void set_gen_onoff(uint16_t adr, bool state) {
+    printf("set_gen_onoff adr: %i", adr) ;
     esp_ble_mesh_client_common_param_t common = {0};
 
     common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET ;
