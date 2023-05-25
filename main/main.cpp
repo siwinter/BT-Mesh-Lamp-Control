@@ -47,15 +47,14 @@ void eventReceived (client_status_cb_t* status, esp_ble_mesh_client_common_param
 
 void msgReceived(char* msg){
     int i ;
-    for(i=0 ; i < 7 ; i++) if ("cmd/BT_"[i] != msg[i]) return ;
     uint16_t adr = 0 ;
     char* cmd ;
     char* param ;
+    for(i=0 ; i < 7 ; i++) if ("cmd/BT_"[i] != msg[i]) return ;
     adr = strtol (&msg[i], &cmd, 16);
     if (cmd[0] == '/') {cmd = cmd +1 ;} else return ;
     while(msg[i] != ':') {i++ ;} msg[i++] = 0;
     param = msg + i ;
-    int16_t value ;
     printf("cmd: %s, param: %s, adr: %i \n", cmd, param, adr) ;
     if (strcmp(cmd,"state") == 0) {
         if (strcmp(param,"on") == 0) set_gen_onoff(adr, true);
